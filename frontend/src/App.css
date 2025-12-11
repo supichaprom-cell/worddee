@@ -1,0 +1,479 @@
+/* ---------- GLOBAL ---------- */
+:root {
+  font-family: "Inter", system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+}
+
+body {
+  margin: 0;
+  background: #f7eefc; /* pastel pink ทั่วหน้า */
+}
+
+.app {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ---------- NAVBAR ---------- */
+
+.navbar {
+  height: 56px;
+  background: #ffffff;
+  border-bottom: 1px solid #e5e7eb;
+  display: flex;
+  align-items: center;
+  padding: 0 40px;
+  justify-content: space-between;
+}
+
+.nav-logo {
+  font-weight: 700;
+  font-size: 16px;
+}
+
+.nav-links {
+  display: flex;
+  gap: 24px;
+  font-size: 14px;
+}
+
+.nav-link {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: #0073b6;
+  padding: 0;
+}
+
+.nav-link.active {
+  font-weight: 600;
+  text-decoration: underline;
+}
+
+.nav-profile {
+  width: 24px;
+  height: 24px;
+  border-radius: 999px;
+  border: 2px solid #0ea5e9;
+  background: #e0f2fe;
+}
+
+/* ---------- MAIN ---------- */
+
+.main {
+  flex: 1;
+  padding: 32px 40px 40px;
+}
+
+/* =========================================================
+   WORD OF THE DAY PAGE
+   ========================================================= */
+
+.word-page {
+}
+
+.hero-bg {
+  background: #819593;
+  width: 100%;
+  min-height: calc(100vh - 56px - 32px - 40px);
+  border-radius: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* card กลาง panel */
+
+.card {
+  background: #ffffff;
+  width: 720px;
+  max-width: 100%;
+  border-radius: 14px;
+  padding: 32px 40px 36px;
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.25);
+  display: flex;
+  flex-direction: column;
+}
+
+/* titles */
+
+.wod-title,
+.result-title {
+  font-size: 22px;
+  font-weight: 700;
+  margin: 0 0 4px;
+  color: #1f2933;
+}
+
+.result-title {
+  text-align: center;
+}
+
+.wod-subtitle {
+  font-size: 14px;
+  margin: 0 0 20px;
+  color: #6b7280;
+}
+
+/* word content row */
+
+.wod-word-row {
+  display: grid;
+  grid-template-columns: 160px 1fr;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.wod-image {
+  width: 160px;
+  height: 150px;
+  object-fit: cover;
+  border-radius: 10px;
+}
+
+/* word info box */
+
+.wod-word-info {
+  border-radius: 10px;
+  border: 1px solid #e5e7eb;
+  padding: 12px 16px 14px;
+  background: #fafafa;
+}
+
+.wod-word-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 6px;
+}
+
+.wod-word-main {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.wod-word-bullet {
+  font-size: 18px;
+}
+
+.wod-word-text {
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.badge {
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+}
+
+.badge-level {
+  background: #ffe58b;
+  color: #374151;
+}
+
+.badge-score {
+  background: #e5e7eb;
+  color: #111827;
+}
+
+.wod-word-pos {
+  font-size: 12px;
+  color: #4b5563;
+  margin: 0 0 4px;
+}
+
+.wod-word-meaning,
+.wod-word-example {
+  margin: 0;
+  font-size: 13px;
+  color: #4b5563;
+}
+
+/* input */
+
+.wod-input {
+  width: 100%;
+  border-radius: 10px;
+  border: 1px solid #e5e7eb;
+  padding: 10px 12px;
+  font-size: 14px;
+}
+
+/* actions / buttons */
+
+.wod-actions {
+  margin-top: 20px;
+  display: flex;
+  justify-content: space-between;
+}
+
+.btn {
+  border-radius: 999px;
+  border: 1px solid transparent;
+  padding: 8px 26px;
+  font-size: 14px;
+  cursor: pointer;
+  font-weight: 500;
+}
+
+.btn-primary {
+  background: #062b25;
+  color: #ffffff;
+}
+
+.btn-primary:hover {
+  background: #0b3c34;
+}
+
+.btn-ghost {
+  background: #ffffff;
+  border-color: #e5e7eb;
+  color: #374151;
+}
+
+.btn-ghost:hover {
+  background: #f9fafb;
+}
+
+/* result block */
+
+.wod-result-badges {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+  margin: 12px 0 16px;
+}
+
+.wod-result-block {
+  border-radius: 8px;
+  border: 1px solid #e5e7eb;
+  padding: 10px 12px;
+  font-size: 13px;
+  margin-bottom: 12px;
+}
+
+.wod-result-block .label {
+  font-weight: 600;
+  margin-right: 4px;
+}
+
+.wod-suggestion {
+  background: #eaffd7;
+  border-radius: 8px;
+  border-left: 5px solid #8fd25c;
+  padding: 10px 12px 12px;
+  font-size: 13px;
+}
+
+.suggestion-label {
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+
+.suggestion-main {
+  margin-bottom: 4px;
+}
+
+.suggestion-extra {
+  margin: 0;
+  font-size: 12px;
+}
+
+/* loading skeleton */
+
+.skeleton-card {
+  gap: 16px;
+}
+
+.skeleton {
+  background: #e5e7eb;
+  border-radius: 8px;
+  animation: pulse 1.2s ease-in-out infinite alternate;
+}
+
+.sk-title {
+  width: 60%;
+  height: 18px;
+}
+
+.sk-circle {
+  width: 50px;
+  height: 50px;
+  border-radius: 999px;
+}
+
+.sk-line {
+  width: 80%;
+  height: 12px;
+}
+
+.sk-line.long {
+  width: 90%;
+  height: 18px;
+}
+
+.sk-input {
+  width: 100%;
+  height: 40px;
+}
+
+.sk-button-row {
+  width: 60%;
+  height: 32px;
+  border-radius: 999px;
+}
+
+@keyframes pulse {
+  0% {
+    opacity: 0.6;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+
+/* =========================================================
+   DASHBOARD PAGE
+   ========================================================= */
+
+.dashboard-section {
+  display: flex;
+  justify-content: center;
+}
+
+.dashboard-card {
+  width: 720px;
+}
+
+.dash-title {
+  font-size: 24px;
+  font-weight: 700;
+  margin: 0 0 16px;
+}
+
+.dash-subheading {
+  font-size: 16px;
+  font-weight: 600;
+  margin: 16px 0 8px;
+}
+
+.dash-banner {
+  background: #eef6ff;
+  border-radius: 999px;
+  padding: 8px 16px;
+  font-size: 13px;
+}
+
+.dash-overview {
+  border-radius: 12px;
+  border: 1px solid #e5e7eb;
+  padding: 16px 18px;
+  margin-top: 8px;
+}
+
+.dash-overview-header {
+  font-weight: 600;
+  margin-bottom: 10px;
+}
+
+.dash-overview-stats {
+  display: flex;
+  gap: 24px;
+}
+
+.dash-stat {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.dash-stat-icon {
+  font-size: 18px;
+}
+
+.dash-stat-value {
+  font-weight: 700;
+}
+
+.dash-stat-label {
+  font-size: 12px;
+  color: #6b7280;
+}
+
+/* chart card */
+
+.dash-chart-card {
+  margin-top: 18px;
+  border-radius: 12px;
+  border: 1px solid #e5e7eb;
+  padding: 14px 16px 18px;
+}
+
+.dash-chart-header {
+  display: flex;
+  justify-content: space-between;
+  font-size: 13px;
+  margin-bottom: 8px;
+}
+
+.dash-link {
+  font-size: 12px;
+  color: #0ea5e9;
+  text-decoration: none;
+}
+
+.dash-chart-body {
+  height: 220px;
+}
+
+.dash-chart-placeholder {
+  height: 100%;
+  border-radius: 10px;
+  background: #f3f4f6;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  color: #9ca3af;
+}
+
+/* mini chart bars แบบง่าย ๆ */
+
+.dash-mini-chart {
+  display: flex;
+  align-items: flex-end;
+  height: 100%;
+  gap: 6px;
+}
+
+.mini-bar-wrapper {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.mini-bar {
+  width: 100%;
+  max-width: 18px;
+  background: #4b9ce2;
+  border-radius: 999px 999px 0 0;
+}
+
+.mini-bar-label {
+  font-size: 10px;
+  margin-top: 4px;
+  color: #6b7280;
+}
+
+/* CTA button */
+
+.dash-cta {
+  margin-top: 20px;
+  width: 220px;
+  display: block;
+  margin-left: auto;
+  margin-right: auto;
+}
