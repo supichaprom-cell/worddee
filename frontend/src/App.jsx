@@ -1,309 +1,197 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import "./App.css";
 
-const API_BASE = "http://localhost:8000";
+import useUsers from "./hooks/useUsers";
+
+// Pages
+import LoginPage from "./pages/LoginPage.jsx";
+import RegisterPage from "./pages/RegisterPage.jsx";
+import SettingsPage from "./pages/SettingsPage.jsx";
+import WordPage from "./pages/WordPage.jsx";
+import ResultPage from "./pages/ResultPage.jsx";
+import DashboardPage from "./pages/DashboardPage.jsx";
+import LoadingPage from "./pages/LoadingPage.jsx";
+
+/* =========================================================
+   ROOT APP
+========================================================= */
 
 export default function App() {
-  const [page, setPage] = useState("word");
+  const userSystem = useUsers();
+  const { currentUser, avatar, logout } = userSystem;
+
+  const [page, setPage] = useState("login");
+  const [result, setResult] = useState(null);
+
+  const go = (p) => setPage(p);
 
   return (
     <div className="app">
-      <Navbar page={page} setPage={setPage} />
+
+      {/* Hide navbar when not logged in */}
+      {currentUser && page !== "login" && page !== "register" && (
+        <Navbar
+          currentUser={currentUser}
+          avatar={avatar}
+          go={go}
+          logout={logout}
+        />
+      )}
+
       <main className="main">
-        {page === "word" ? (
-          <WordOfTheDayPage goDashboard={() => setPage("dashboard")} />
-        ) : (
-          <DashboardPage />
+
+        {/* LOGIN PAGE */}
+        {page === "login" && (
+          <LoginPage
+            userSystem={userSystem}
+            onLogin={() => go("dashboard")}
+            goRegister={() => go("register")}
+          />
         )}
+
+        {/* REGISTER PAGE */}
+        {page === "register" && (
+          <RegisterPage
+            userSystem={userSystem}
+            goLogin={() => go("login")}
+            onRegister={() => go("dashboard")}
+          />
+        )}
+
+        {/* SETTINGS PAGE */}
+        {page === "settings" && (
+          <SettingsPage
+            userSystem={userSystem}
+            goBack={() => go("dashboard")}
+          />
+        )}
+
+        {/* WORD PAGE */}
+        {page === "word" && (
+          <WordPage
+            username={currentUser}
+            onResult={(res) => {
+              setResult(res);
+              go("result");
+            }}
+          />
+        )}
+
+        {/* RESULT PAGE */}
+        {page === "result" && (
+          <ResultPage
+            data={result}
+            goDashboard={() => go("dashboard")}
+            goRetry={() => go("word")}
+          />
+        )}
+
+        {/* DASHBOARD PAGE */}
+        {page === "dashboard" && (
+          <DashboardPage
+            username={currentUser}
+            goWord={() => go("word")}
+          />
+        )}
+
+        {/* OPTIONAL LOADING PAGE */}
+        {page === "loading" && <LoadingPage />}
+
       </main>
     </div>
   );
 }
 
-/* ---------------- NAVBAR ---------------- */
+/* =========================================================
+   NAVBAR (Multi-user, Avatar, Menu)
+========================================================= */
 
-function Navbar({ page, setPage }) {
+function Navbar({ currentUser, avatar, go, logout }) {
+  const [open, setOpen] = useState(false);
+
   return (
     <header className="navbar">
       <div className="nav-logo">worddee.ai</div>
+
       <nav className="nav-links">
         <button
-          className={`nav-link ${page === "dashboard" ? "active" : ""}`}
-          onClick={() => setPage("dashboard")}
+          className="nav-link"
+          onClick={() => go("dashboard")}
         >
           My Progress
         </button>
+
         <button
-          className={`nav-link ${page === "word" ? "active" : ""}`}
-          onClick={() => setPage("word")}
+          className="nav-link"
+          onClick={() => go("word")}
         >
           Word of the Day
         </button>
       </nav>
-      <div className="nav-profile" />
+
+      {/* Avatar */}
+      <div
+        className="nav-profile"
+        style={{
+          cursor: "pointer",
+          display: "flex",
+          justifyContent: "center",
+          alignItems: "center",
+          fontWeight: 700,
+          fontSize: 14,
+          background: "#e0f2fe",
+          border: "2px solid #0ea5e9",
+          color: "#0369a1",
+        }}
+        onClick={() => setOpen(!open)}
+      >
+        {avatar}
+      </div>
+
+      {/* Dropdown menu */}
+      {open && (
+        <div
+          style={{
+            position: "absolute",
+            top: 56,
+            right: 20,
+            background: "#fff",
+            borderRadius: 10,
+            border: "1px solid #e5e7eb",
+            padding: "10px 0",
+            width: 160,
+            boxShadow: "0 4px 12px rgba(0,0,0,0.12)",
+            zIndex: 999,
+          }}
+        >
+          <button
+            className="nav-link"
+            style={{ width: "100%", textAlign: "left", padding: "8px 14px" }}
+            onClick={() => {
+              setOpen(false);
+              go("settings");
+            }}
+          >
+            Settings
+          </button>
+
+          <button
+            className="nav-link"
+            style={{
+              width: "100%",
+              textAlign: "left",
+              padding: "8px 14px",
+              color: "#dc2626",
+            }}
+            onClick={() => {
+              logout();
+              go("login");
+            }}
+          >
+            Logout
+          </button>
+        </div>
+      )}
     </header>
-  );
-}
-
-/* ---------------- WORD PAGE ---------------- */
-
-function WordOfTheDayPage({ goDashboard }) {
-  const [phase, setPhase] = useState("loading");
-  const [word, setWord] = useState("");
-  const [sentence, setSentence] = useState("");
-
-  // NEW: dynamic fields from API
-  const [meaning, setMeaning] = useState("");
-  const [pos, setPos] = useState("");
-  const [example, setExample] = useState("");
-
-  const [feedback, setFeedback] = useState(null);
-
-  useEffect(() => {
-    fetchWord();
-  }, []);
-
-  const fetchWord = async () => {
-    setPhase("loading");
-    try {
-      const res = await fetch(`${API_BASE}/api/word`);
-      const data = await res.json();
-
-      setWord(data.word || "");
-      setMeaning(data.meaning || "");
-      setPos(data.pos || "");
-      setExample(data.example || "");
-
-      setPhase("challenge");
-    } catch (err) {
-      console.error(err);
-      alert("Error fetching word");
-      setPhase("challenge");
-    }
-  };
-
-  const handleSubmit = async () => {
-    if (!sentence.trim()) {
-      alert("Please write a sentence.");
-      return;
-    }
-
-    setPhase("loading");
-
-    try {
-      const res = await fetch(`${API_BASE}/api/validate-sentence`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ word, sentence }),
-      });
-
-      const data = await res.json();
-      setFeedback(data);
-      setPhase("result");
-    } catch (err) {
-      console.error(err);
-      alert("Error validating sentence");
-      setPhase("challenge");
-    }
-  };
-
-  const handleClose = () => {
-    setSentence("");
-    setFeedback(null);
-    setPhase("challenge");
-  };
-
-  return (
-    <section className="word-page">
-      <div className="hero-bg">
-        {phase === "loading" && <LoadingCard />}
-
-        {phase === "challenge" && (
-          <div className="card">
-            <h1 className="wod-title">Word of the day</h1>
-            <p className="wod-subtitle">
-              Practice writing a meaningful sentence using today&apos;s word.
-            </p>
-
-            <div className="wod-word-row">
-              <img src="/image1.jpg" className="wod-image" alt="word visual" />
-
-              <div className="wod-word-info">
-                <div className="wod-word-header">
-                  <div className="wod-word-main">
-                    <span className="wod-word-bullet">▸</span>
-                    <span className="wod-word-text">{word}</span>
-                  </div>
-                  <span className="badge badge-level">Level Beginner</span>
-                </div>
-
-                <p className="wod-word-pos">{pos}</p>
-
-                <p className="wod-word-meaning">
-                  <strong>Meaning:</strong> {meaning}
-                </p>
-
-                <p className="wod-word-example">
-                  "{example}"
-                </p>
-              </div>
-            </div>
-
-            <input
-              className="wod-input"
-              placeholder="Write your sentence here..."
-              value={sentence}
-              onChange={(e) => setSentence(e.target.value)}
-            />
-
-            <div className="wod-actions">
-              <button className="btn btn-ghost" onClick={fetchWord}>
-                Do it later
-              </button>
-              <button className="btn btn-primary" onClick={handleSubmit}>
-                Submit
-              </button>
-            </div>
-          </div>
-        )}
-
-        {phase === "result" && feedback && (
-          <div className="card">
-            <h1 className="result-title">Challenge completed</h1>
-
-            <div className="wod-result-badges">
-              <span className="badge badge-level">Level {feedback.level}</span>
-              <span className="badge badge-score">Score {feedback.score}%</span>
-            </div>
-
-            <div className="wod-result-block">
-              <span className="label">Your sentence:</span> <span>{sentence}</span>
-            </div>
-
-            <div className="wod-suggestion">
-              <div className="suggestion-label">Suggestion</div>
-              <div className="suggestion-main">{feedback.suggestion}</div>
-              <p className="suggestion-extra">{feedback.corrected_sentence}</p>
-            </div>
-
-            <div className="wod-actions">
-              <button className="btn btn-ghost" onClick={handleClose}>
-                Close
-              </button>
-              <button className="btn btn-primary" onClick={goDashboard}>
-                View my progress
-              </button>
-            </div>
-          </div>
-        )}
-      </div>
-    </section>
-  );
-}
-
-/* loading skeleton */
-function LoadingCard() {
-  return (
-    <div className="card skeleton-card">
-      <div className="skeleton sk-title" />
-      <div className="skeleton sk-circle" />
-      <div className="skeleton sk-line" />
-      <div className="skeleton sk-line long" />
-      <div className="skeleton sk-input" />
-      <div className="skeleton sk-button-row" />
-    </div>
-  );
-}
-
-/* ---------------- DASHBOARD ---------------- */
-
-function DashboardPage() {
-  const [summary, setSummary] = useState([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    const load = async () => {
-      try {
-        const res = await fetch(`${API_BASE}/api/summary`);
-        const data = await res.json();
-        setSummary(data);
-      } catch (err) {
-        console.error(err);
-      } finally {
-        setLoading(false);
-      }
-    };
-    load();
-  }, []);
-
-  return (
-    <section className="dashboard-section">
-      <div className="dashboard-card">
-        <h1 className="dash-title">Learner dashboard</h1>
-
-        <h2 className="dash-subheading">Your missions today</h2>
-        <div className="dash-banner">
-          Well done! You&apos;ve completed all your missions.
-        </div>
-
-        <h2 className="dash-subheading">Overview</h2>
-        <div className="dash-overview">
-          <div className="dash-overview-header">Learning consistency</div>
-
-          <div className="dash-overview-stats">
-            <div className="dash-stat">
-              <div className="dash-stat-icon">🔥</div>
-              <div>
-                <div className="dash-stat-value">1</div>
-                <div className="dash-stat-label">Day streak</div>
-              </div>
-            </div>
-
-            <div className="dash-stat">
-              <div className="dash-stat-icon">⏱</div>
-              <div>
-                <div className="dash-stat-value">10</div>
-                <div className="dash-stat-label">hours learned</div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div className="dash-chart-card">
-          <div className="dash-chart-header">
-            <span>Latest band scores</span>
-            <a href="#" className="dash-link">
-              View scoring criteria
-            </a>
-          </div>
-
-          <div className="dash-chart-body">
-            {loading ? (
-              <div className="dash-chart-placeholder">Loading progress…</div>
-            ) : summary.length === 0 ? (
-              <div className="dash-chart-placeholder">
-                &lt;Create your own chart&gt;
-              </div>
-            ) : (
-              <div className="dash-mini-chart">
-                {summary.map((item) => (
-                  <div key={item.date} className="mini-bar-wrapper">
-                    <div
-                      className="mini-bar"
-                      style={{ height: `${item.score}%` }}
-                    />
-                    <span className="mini-bar-label">
-                      {item.date.slice(5)}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
-
-        <button className="btn btn-primary dash-cta">Take the test</button>
-      </div>
-    </section>
   );
 }
