@@ -31,6 +31,7 @@ export default function WordPage({ username, onResult }) {
       setLevel(data.level);
 
       setSentence("");
+      setFeedback(null);
       setPhase("challenge");
     } catch (err) {
       alert("Error loading word.");
@@ -39,7 +40,7 @@ export default function WordPage({ username, onResult }) {
   };
 
   // =========================================================
-  // Submit sentence → validate → save → go to result
+  // Submit → validate → save → go to result
   // =========================================================
   const submitSentence = async () => {
     if (!sentence.trim()) {
@@ -50,7 +51,7 @@ export default function WordPage({ username, onResult }) {
     setPhase("loading");
 
     try {
-      // Validate sentence with n8n
+      // 1️⃣ Validate sentence with n8n
       const res = await fetch(`${API_BASE}/api/validate-sentence`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -60,27 +61,28 @@ export default function WordPage({ username, onResult }) {
       const data = await res.json();
       setFeedback(data);
 
-      // Save history
-      await fetch(`${API_BASE}/api/save-history`, {
+      // 2️⃣ Save score using NEW system
+      await fetch(`${API_BASE}/user/${username}/scores`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          date: new Date().toISOString().slice(0, 10),
-          score: data.score || 0,
+          score: data.score,
           word: word,
-          level: data.level || "unknown",
-          user: username || "guest",
+          sentence: sentence,
+          level: data.level,
+          date: new Date().toISOString().slice(0, 10),
         }),
       });
 
-      // Send final result back to App.jsx
+      // 3️⃣ Send combined result to App.jsx for result page
       onResult({
         ...data,
         word,
         sentence,
       });
+
     } catch (err) {
-      console.error(err);
+      console.error("Submit error:", err);
       alert("Error during validation.");
       setPhase("challenge");
     }
@@ -120,7 +122,7 @@ export default function WordPage({ username, onResult }) {
               </div>
             </div>
 
-            {/* Input box */}
+            {/* Input */}
             <input
               className="wod-input"
               placeholder="Write your sentence..."
@@ -133,6 +135,7 @@ export default function WordPage({ username, onResult }) {
               <button className="btn btn-ghost" onClick={loadWord}>
                 New word
               </button>
+
               <button className="btn btn-primary" onClick={submitSentence}>
                 Submit
               </button>

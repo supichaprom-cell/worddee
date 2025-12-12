@@ -1,28 +1,30 @@
-# main.py
+# main.py (updated with sentence support)
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
+from typing import Dict, Any, List, Optional
 import httpx
 import random
-from typing import Dict, Any, List
+from datetime import datetime, timedelta, date
 
-app = FastAPI(title="Worddee API")
+app = FastAPI(title="Worddee API (with user scores)")
 
 # Allow React app to call FastAPI
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # in production restrict this
+    allow_origins=["*"],
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# n8n webhook (adjust if your n8n runs on different host/port)
+# n8n webhook
 N8N_WEBHOOK = "http://localhost:5678/webhook/score-sentence"
 
+
 # ---------------------------------------------------------
-# Vocabulary (60 words: Beginner 20 | Intermediate 20 | Advanced 20)
+# Words list
 # ---------------------------------------------------------
 WORDS = [
-    # BEGINNER (20)
     {"word": "apple", "meaning": "a round fruit", "pos": "noun", "level": "beginner"},
     {"word": "run", "meaning": "move quickly", "pos": "verb", "level": "beginner"},
     {"word": "happy", "meaning": "feeling pleasure", "pos": "adjective", "level": "beginner"},
@@ -44,7 +46,7 @@ WORDS = [
     {"word": "drink", "meaning": "swallow liquid", "pos": "verb", "level": "beginner"},
     {"word": "sun", "meaning": "star of the solar system", "pos": "noun", "level": "beginner"},
 
-    # INTERMEDIATE (20)
+    # INTERMEDIATE
     {"word": "runway", "meaning": "path for airplanes", "pos": "noun", "level": "intermediate"},
     {"word": "future", "meaning": "time ahead", "pos": "noun", "level": "intermediate"},
     {"word": "teacher", "meaning": "person who educates", "pos": "noun", "level": "intermediate"},
@@ -66,7 +68,7 @@ WORDS = [
     {"word": "protect", "meaning": "keep safe", "pos": "verb", "level": "intermediate"},
     {"word": "memory", "meaning": "ability to remember", "pos": "noun", "level": "intermediate"},
 
-    # ADVANCED (20)
+    # ADVANCED
     {"word": "sustainable", "meaning": "can be maintained long-term", "pos": "adjective", "level": "advanced"},
     {"word": "innovation", "meaning": "new creative idea", "pos": "noun", "level": "advanced"},
     {"word": "analysis", "meaning": "detailed study", "pos": "noun", "level": "advanced"},
@@ -90,100 +92,160 @@ WORDS = [
 ]
 
 # ---------------------------------------------------------
-# Simple in-memory history
+# USER DATABASE (memory)
 # ---------------------------------------------------------
-# Note: in-memory history resets when process restarts.
-# For production, use persistent storage (database).
-history: List[Dict[str, Any]] = []
+users: Dict[str, Dict[str, Any]] = {}
 
 
 # ---------------------------------------------------------
-# API: Random word
+# MODELS
 # ---------------------------------------------------------
-@app.get("/api/word")
-def get_random_word():
-    item = random.choice(WORDS)
-    return {
-        "word": item["word"],
-        "meaning": item["meaning"],
-        "pos": item["pos"],
-        "level": item["level"],
+class ScoreIn(BaseModel):
+    score: int
+    word: Optional[str] = ""
+    sentence: Optional[str] = ""   # ✅ เพิ่ม sentence
+    date: Optional[str] = None
+    level: Optional[str] = "unknown"
+
+
+class ValidatePayload(BaseModel):
+    sentence: str
+    user: Optional[str] = "guest"
+    word: Optional[str] = None
+
+
+# ---------------------------------------------------------
+# Helper functions
+# ---------------------------------------------------------
+def today_str() -> str:
+    return date.today().strftime("%Y-%m-%d")
+
+
+def ensure_user(username: str):
+    if username not in users:
+        users[username] = {
+            "summary": {"day_streak": 0, "level": 1, "total_xp": 0},
+            "scores": []
+        }
+
+
+def compute_total_xp(username: str) -> int:
+    return sum(int(s.get("score", 0)) for s in users[username]["scores"])
+
+
+def compute_level(total_xp: int) -> int:
+    return 1 + (total_xp // 100)
+
+
+def compute_day_streak(username: str) -> int:
+    dates = sorted({s.get("date") for s in users[username]["scores"] if s.get("date")})
+    if not dates:
+        return 0
+
+    date_objs = sorted([datetime.strptime(d, "%Y-%m-%d").date() for d in dates], reverse=True)
+
+    streak = 0
+    current = date.today()
+
+    for d in date_objs:
+        if d == current:
+            streak += 1
+            current -= timedelta(days=1)
+        elif d < current:
+            break
+
+    return streak
+
+
+def update_summary(username: str):
+    total = compute_total_xp(username)
+    level = compute_level(total)
+    streak = compute_day_streak(username)
+    users[username]["summary"] = {
+        "total_xp": total,
+        "level": level,
+        "day_streak": streak,
     }
 
 
 # ---------------------------------------------------------
-# API: Validate sentence (via n8n webhook)
+# POST SCORE (SAVE)
 # ---------------------------------------------------------
-@app.post("/api/validate-sentence")
-async def validate_sentence(payload: Dict[str, Any]):
-    """
-    Forward payload to n8n webhook which should return a JSON like:
-    { "score": 85, "level": "beginner", "suggestion": "...", "corrected_sentence": "..." }
-    """
-    try:
-        async with httpx.AsyncClient(timeout=10.0) as client:
-            resp = await client.post(N8N_WEBHOOK, json=payload)
-            # If n8n returns non-JSON or error, this will raise an exception
-            data = resp.json()
+@app.post("/user/{username}/scores")
+def save_score(username: str, payload: ScoreIn):
+    ensure_user(username)
 
-        return {
-            "score": data.get("score", 0),
-            "level": data.get("level", "Unknown"),
-            "suggestion": data.get("suggestion", "No suggestion."),
-            "corrected_sentence": data.get("corrected_sentence", payload.get("sentence", "")),
-        }
-    except Exception as e:
-        # Fallback response if webhook fails
-        return {
-            "score": 0,
-            "level": "Error",
-            "suggestion": "Server error contacting AI evaluator.",
-            "corrected_sentence": payload.get("sentence", ""),
-            "debug": str(e),
-        }
+    entry_date = payload.date or today_str()
 
-
-# ---------------------------------------------------------
-# API: Save history
-# ---------------------------------------------------------
-@app.post("/api/save-history")
-def save_history(entry: Dict[str, Any]):
-    """
-    Save an entry to in-memory history.
-    We normalize and ensure required fields exist so frontend can always rely on keys.
-    Expected fields (frontend should send): date, score, word, level, user
-    """
-    fixed = {
-        "date": entry.get("date", "unknown"),
-        "score": int(entry.get("score", 0) or 0),
-        "word": entry.get("word", "") or "",
-        "level": entry.get("level", "unknown") or "unknown",
-        "user": (entry.get("user") or "guest"),
+    record = {
+        "date": entry_date,
+        "score": payload.score,
+        "word": payload.word,
+        "sentence": payload.sentence or "",   # ✅ เก็บ sentence ที่นี่
+        "level": payload.level,
+        "user": username,
     }
-    history.append(fixed)
-    return {"status": "ok", "saved": fixed}
+
+    users[username]["scores"].append(record)
+
+    update_summary(username)
+
+    return {"status": "ok", "saved": record}
 
 
 # ---------------------------------------------------------
-# API: Summary (list history)
+# GET SCORES
 # ---------------------------------------------------------
-@app.get("/api/summary")
-def summary():
-    return history
+@app.get("/user/{username}/scores")
+def get_scores(username: str):
+    ensure_user(username)
+    return users[username]["scores"]
 
 
 # ---------------------------------------------------------
-# API: Debug helper
+# GET SUMMARY
+# ---------------------------------------------------------
+@app.get("/user/{username}/summary")
+def get_summary(username: str):
+    ensure_user(username)
+    update_summary(username)
+    return users[username]["summary"]
+
+
+# ---------------------------------------------------------
+# DEBUG
 # ---------------------------------------------------------
 @app.get("/api/debug-history")
 def debug_history():
-    return {"count": len(history), "history": history}
+    return users
 
 
 # ---------------------------------------------------------
-# Run with: uvicorn main:app --reload
+# Word API
+# ---------------------------------------------------------
+@app.get("/api/word")
+def random_word():
+    return random.choice(WORDS)
+
+
+# ---------------------------------------------------------
+# Validate Sentence via n8n
+# ---------------------------------------------------------
+@app.post("/api/validate-sentence")
+async def validate_sentence(payload: Dict[str, Any]):
+    try:
+        async with httpx.AsyncClient() as client:
+            resp = await client.post(N8N_WEBHOOK, json=payload)
+            data = resp.json()
+
+        return data
+    except:
+        return {"score": 0, "error": "n8n error"}
+
+
+# ---------------------------------------------------------
+# RUN
 # ---------------------------------------------------------
 if __name__ == "__main__":
     import uvicorn
-
     uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
